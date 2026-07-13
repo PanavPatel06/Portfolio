@@ -1,38 +1,50 @@
 // Wait for DOM to be fully loaded
 document.addEventListener("DOMContentLoaded", () => {
 
-  // --- WORD-BY-WORD HEADING REVEAL ---
-  // Each word gets its own inline-block span with an 80ms incremental delay,
-  // so headings "focus in" word by word (blur + slide + fade).
-  document.querySelectorAll(".reveal-words").forEach(heading => {
-    const words = heading.textContent.trim().split(/\s+/);
-    heading.textContent = "";
-    words.forEach((word, i) => {
-      const span = document.createElement("span");
-      span.className = "word";
-      span.textContent = word;
-      span.style.setProperty("--word-delay", `${i * 80}ms`);
-      heading.appendChild(span);
-      if (i < words.length - 1) heading.appendChild(document.createTextNode(" "));
-    });
-  });
+  // --- REVEAL ANIMATIONS: FIRST LOAD OF THE SESSION ONLY ---
+  // The blur/slide reveals play once per browser session; on reloads and
+  // revisits the content appears immediately (.no-reveal, see style.css).
+  let revealPlayed = false;
+  try {
+    revealPlayed = sessionStorage.getItem("revealPlayed") === "1";
+    sessionStorage.setItem("revealPlayed", "1");
+  } catch (e) { /* storage unavailable (private mode) — always animate */ }
 
-  // --- SCROLL REVEAL VIA INTERSECTIONOBSERVER ---
-  const revealElements = document.querySelectorAll(".reveal, .reveal-words");
-
-  if (window.IntersectionObserver) {
-    const revealObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("in-view");
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
-
-    revealElements.forEach(el => revealObserver.observe(el));
+  if (revealPlayed) {
+    document.documentElement.classList.add("no-reveal");
   } else {
-    revealElements.forEach(el => el.classList.add("in-view"));
+    // Word-by-word heading reveal: each word gets its own inline-block span
+    // with an 80ms incremental delay, so headings "focus in" word by word.
+    document.querySelectorAll(".reveal-words").forEach(heading => {
+      const words = heading.textContent.trim().split(/\s+/);
+      heading.textContent = "";
+      words.forEach((word, i) => {
+        const span = document.createElement("span");
+        span.className = "word";
+        span.textContent = word;
+        span.style.setProperty("--word-delay", `${i * 80}ms`);
+        heading.appendChild(span);
+        if (i < words.length - 1) heading.appendChild(document.createTextNode(" "));
+      });
+    });
+
+    // Scroll reveal via IntersectionObserver
+    const revealElements = document.querySelectorAll(".reveal, .reveal-words");
+
+    if (window.IntersectionObserver) {
+      const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+
+      revealElements.forEach(el => revealObserver.observe(el));
+    } else {
+      revealElements.forEach(el => el.classList.add("in-view"));
+    }
   }
 
   // --- ANIMATED PIXEL GLYPH CANVASES ---

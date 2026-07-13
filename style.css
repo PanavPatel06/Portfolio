@@ -29,6 +29,18 @@
 
   /* Motion: hover fast (200ms), entrance slow (700ms) */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Shared horizontal gutter — every section, the hero, the footer, and the
+     page guide lines all derive from this so the geometry stays aligned */
+  --gutter: 24px;
+}
+
+@media (min-width: 768px) {
+  :root { --gutter: 48px; }
+}
+
+@media (min-width: 1024px) {
+  :root { --gutter: 80px; }
 }
 
 /* ============================================================
@@ -45,6 +57,7 @@ html {
 }
 
 body {
+  position: relative;
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -53,6 +66,67 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Page geometry guides — Tailwind-style architectural lines
+   ------------------------------------------------------------
+   Two full-height vertical hairlines mark the content container's
+   edges; section top borders cross them, with small + markers at
+   the intersections. Decorative diagonal-striped bands sit between
+   some sections, bounded by hairlines.
+   ============================================================ */
+.page-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.page-guides-inner {
+  position: relative;
+  height: 100%;
+  margin: 0 auto;
+  /* Rails sit 5px outside the content edges so components never touch them */
+  width: calc(100% - var(--gutter) * 2 + 10px);
+  max-width: calc(1152px + 10px);
+  border-left: 1px solid var(--border-hairline);
+  border-right: 1px solid var(--border-hairline);
+}
+
+/* Hatched divider band: a 40px cell of 315deg diagonal hatch (1px stroke,
+   10px tile, viewport-fixed per LINES_TAILWIND.md) repeated at every
+   section boundary as the page-wide pattern motif. Stripes stay between
+   the rails; the hairline spans the full viewport. */
+.stripe-band {
+  position: relative;
+  height: 40px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.stripe-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: 0 auto;
+  width: min(calc(100% - var(--gutter) * 2 + 10px), 1162px);
+  background-image: repeating-linear-gradient(
+    315deg,
+    rgba(0, 0, 0, 0.05) 0,
+    rgba(0, 0, 0, 0.05) 1px,
+    transparent 0,
+    transparent 50%
+  );
+  background-size: 10px 10px;
+  background-attachment: fixed;
+}
+
+/* Full-bleed structural rule: a hairline that escapes its container and
+   spans the whole viewport, crossing the gutters (200vw-style bleed) */
+.section-rule {
+  border: 0;
+  border-top: 1px solid var(--border-hairline);
+  margin: 0 calc(50% - 50vw) 24px;
 }
 
 ::selection {
@@ -68,7 +142,6 @@ img {
 .container {
   max-width: 1152px;
   margin: 0 auto;
-  padding: 0 24px;
   width: 100%;
 }
 
@@ -188,6 +261,7 @@ h1, h2, h3 {
 
 .nav-pill {
   pointer-events: auto;
+  position: relative;
   width: 100%;
   max-width: 768px;
   display: flex;
@@ -203,10 +277,18 @@ h1, h2, h3 {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+/* Align logo, links, and CTA label on their shared text baseline —
+   Courier Prime's vertical metrics differ from the system font, so
+   box-centering leaves the logo visually off the line */
+@media (min-width: 768px) {
+  .nav-pill { align-items: baseline; }
+}
+
 .logo {
   font-family: var(--font-logo);
   font-size: 12px;
   font-weight: 400;
+  line-height: 1;
   letter-spacing: 0.25em;
   color: rgba(0, 0, 0, 0.7);
   text-decoration: none;
@@ -215,13 +297,20 @@ h1, h2, h3 {
 
 .nav-links {
   display: flex;
+  align-items: center;
   gap: 28px;
   list-style: none;
+}
+
+.nav-links li {
+  display: flex;
+  align-items: center;
 }
 
 .nav-links a {
   font-family: system-ui, sans-serif;
   font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.025em;
   color: var(--nav-link);
   text-decoration: none;
@@ -316,7 +405,7 @@ h1, h2, h3 {
    Eyebrow block — glyph + pill + heading (opens every section)
    ============================================================ */
 .eyebrow-block {
-  margin-bottom: 64px;
+  margin-bottom: 16px; /* the .section-rule below it provides the rest */
 }
 
 .pixel-glyph {
@@ -370,20 +459,8 @@ h1, h2, h3 {
    Sections
    ============================================================ */
 .section {
-  padding: 128px 24px;
+  padding: 128px var(--gutter);
   border-top: 1px solid var(--border-hairline);
-}
-
-.section .container {
-  padding: 0;
-}
-
-@media (min-width: 768px) {
-  .section { padding: 128px 48px; }
-}
-
-@media (min-width: 1024px) {
-  .section { padding: 128px 80px; }
 }
 
 /* ============================================================
@@ -394,16 +471,8 @@ h1, h2, h3 {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 160px 24px 128px;
+  padding: 160px var(--gutter) 128px;
   overflow: hidden;
-}
-
-@media (min-width: 768px) {
-  .hero { padding: 160px 48px 128px; }
-}
-
-@media (min-width: 1024px) {
-  .hero { padding: 160px 80px 128px; }
 }
 
 /* Ambient iridescent background (CSS stand-in for the hero video) */
@@ -478,15 +547,26 @@ h1, h2, h3 {
   flex-wrap: wrap;
 }
 
+.hero .section-rule {
+  margin-top: 48px;
+  margin-bottom: 0;
+}
+
 .hero-stats {
   display: flex;
   gap: 32px;
-  margin-top: 80px;
+  margin-top: 24px;
   flex-wrap: wrap;
+}
+
+.stat-block + .stat-block {
+  border-left: 1px solid var(--border-hairline);
+  padding-left: 32px;
 }
 
 @media (min-width: 768px) {
   .hero-stats { gap: 48px; }
+  .stat-block + .stat-block { padding-left: 48px; }
 }
 
 .stat-number {
@@ -712,25 +792,11 @@ h1, h2, h3 {
 /* ============================================================
    Skills — marquee band + category cards
    ============================================================ */
-.section-flush {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.section-flush .container {
-  padding: 0 24px;
-}
-
-@media (min-width: 768px) {
-  .section-flush .container { padding: 0 48px; }
-}
-
-@media (min-width: 1024px) {
-  .section-flush .container { padding: 0 80px; }
-}
-
+/* Marquee is bounded by the two vertical guide lines: same width as the
+   content container, clipped by overflow with a fade mask at the rails */
 .marquee-band {
-  margin: 0 0 64px;
+  max-width: 1152px;
+  margin: 32px auto 64px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -932,15 +998,7 @@ h1, h2, h3 {
    ============================================================ */
 .footer {
   border-top: 1px solid var(--border-hairline);
-  padding: 48px 24px;
-}
-
-@media (min-width: 768px) {
-  .footer { padding: 48px; }
-}
-
-@media (min-width: 1024px) {
-  .footer { padding: 48px 80px; }
+  padding: 48px var(--gutter);
 }
 
 .footer-content {
@@ -949,7 +1007,6 @@ h1, h2, h3 {
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
-  padding: 0;
 }
 
 .footer-text {
@@ -1010,6 +1067,16 @@ h1, h2, h3 {
 .reveal.in-view {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Repeat visits in the same session skip the reveal animations entirely
+   (the .no-reveal class is set by app.js from sessionStorage) */
+.no-reveal .reveal,
+.no-reveal .reveal-words .word {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  transition: none;
 }
 
 /* Respect users who prefer reduced motion */
