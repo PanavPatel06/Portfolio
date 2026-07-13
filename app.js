@@ -1,245 +1,238 @@
 // Wait for DOM to be fully loaded
 document.addEventListener("DOMContentLoaded", () => {
 
-  // --- MOBILE MENU TOGGLE ---
-  const menuToggle = document.getElementById("menuToggle");
-  const navLinks = document.getElementById("navLinks");
-  const links = document.querySelectorAll(".nav-links a");
-
-  menuToggle.addEventListener("click", () => {
-    menuToggle.classList.toggle("active");
-    navLinks.classList.toggle("active");
-  });
-
-  links.forEach(link => {
-    link.addEventListener("click", () => {
-      menuToggle.classList.remove("active");
-      navLinks.classList.remove("active");
+  // --- WORD-BY-WORD HEADING REVEAL ---
+  // Each word gets its own inline-block span with an 80ms incremental delay,
+  // so headings "focus in" word by word (blur + slide + fade).
+  document.querySelectorAll(".reveal-words").forEach(heading => {
+    const words = heading.textContent.trim().split(/\s+/);
+    heading.textContent = "";
+    words.forEach((word, i) => {
+      const span = document.createElement("span");
+      span.className = "word";
+      span.textContent = word;
+      span.style.setProperty("--word-delay", `${i * 80}ms`);
+      heading.appendChild(span);
+      if (i < words.length - 1) heading.appendChild(document.createTextNode(" "));
     });
   });
 
-  // --- CUSTOM CURSOR TRACKER ---
-  const cursor = document.getElementById("customCursor");
-  const cursorDot = document.getElementById("customCursorDot");
+  // --- SCROLL REVEAL VIA INTERSECTIONOBSERVER ---
+  const revealElements = document.querySelectorAll(".reveal, .reveal-words");
 
-  if (window.innerWidth > 768 && typeof gsap !== "undefined") {
-    const cursorX = gsap.quickTo(cursor, "left", { duration: 0.3, ease: "power3" });
-    const cursorY = gsap.quickTo(cursor, "top", { duration: 0.3, ease: "power3" });
-    const dotX = gsap.quickTo(cursorDot, "left", { duration: 0.1, ease: "power3" });
-    const dotY = gsap.quickTo(cursorDot, "top", { duration: 0.1, ease: "power3" });
-
-    window.addEventListener("mousemove", (e) => {
-      cursorX(e.clientX);
-      cursorY(e.clientY);
-      dotX(e.clientX);
-      dotY(e.clientY);
-    });
-
-    // Hover effect on links, buttons, and cards
-    const hoverElements = document.querySelectorAll("a, button, .project-card, .skill-tag, input, textarea, .social-icon, .timeline-content");
-    hoverElements.forEach(elem => {
-      elem.addEventListener("mouseenter", () => {
-        cursor.style.width = "45px";
-        cursor.style.height = "45px";
-        cursor.style.borderColor = "var(--accent-secondary)";
-        cursor.style.backgroundColor = "rgba(168, 85, 247, 0.1)";
+  if (window.IntersectionObserver) {
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("in-view");
+          observer.unobserve(entry.target);
+        }
       });
-      elem.addEventListener("mouseleave", () => {
-        cursor.style.width = "20px";
-        cursor.style.height = "20px";
-        cursor.style.borderColor = "var(--accent-primary)";
-        cursor.style.backgroundColor = "transparent";
-      });
-    });
+    }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+
+    revealElements.forEach(el => revealObserver.observe(el));
+  } else {
+    revealElements.forEach(el => el.classList.add("in-view"));
   }
 
-  // --- ACTIVE HEADER SECTION HIGHLIGHTING ---
-  const sections = document.querySelectorAll("section, .timeline-section, .hero");
+  // --- ANIMATED PIXEL GLYPH CANVASES ---
+  // 40x40 CSS box, 80x80 buffer (2x), image-rendering: pixelated.
+  // A seeded sparse grid of gray squares whose opacity flickers over time.
+  const glyphs = document.querySelectorAll(".pixel-glyph");
+
+  // Simple deterministic hash so each section's seed yields a stable pattern
+  function hashString(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Each section's glyph is a pixel icon describing the heading below it:
+  // journey = ascending bars (career growth), showcase = grid of project tiles,
+  // capabilities = code brackets, connect = envelope.
+  const GLYPH_PATTERNS = {
+    journey: [
+      ".......#",
+      ".......#",
+      ".....#.#",
+      ".....#.#",
+      "...#.#.#",
+      "...#.#.#",
+      ".#.#.#.#",
+      ".#.#.#.#",
+    ],
+    showcase: [
+      ".###.###",
+      ".###.###",
+      ".###.###",
+      "........",
+      ".###.###",
+      ".###.###",
+      ".###.###",
+      "........",
+    ],
+    capabilities: [
+      "........",
+      "..#..#..",
+      ".#....#.",
+      "#......#",
+      "#......#",
+      ".#....#.",
+      "..#..#..",
+      "........",
+    ],
+    connect: [
+      "........",
+      "########",
+      "##....##",
+      "#.#..#.#",
+      "#..##..#",
+      "#......#",
+      "########",
+      "........",
+    ],
+  };
+
+  glyphs.forEach(canvas => {
+    const ctx = canvas.getContext("2d");
+    const seed = canvas.dataset.seed || "glyph";
+    const rand = mulberry32(hashString(seed));
+    const GRID = 8;
+    const CELL = 80 / GRID; // 10px cells in the 80x80 buffer (5px at 40px CSS size)
+    const pattern = GLYPH_PATTERNS[seed];
+
+    // Lit cells come from the icon bitmap (or a seeded sparse mask as fallback),
+    // each with its own base gray shade for pixel-art texture.
+    const cells = [];
+    for (let y = 0; y < GRID; y++) {
+      for (let x = 0; x < GRID; x++) {
+        const lit = pattern ? pattern[y][x] === "#" : rand() < 0.45;
+        if (lit) {
+          cells.push({ x, y, shade: 30 + Math.floor(rand() * 130) });
+        }
+      }
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, 80, 80);
+      cells.forEach(cell => {
+        ctx.fillStyle = `rgb(${cell.shade}, ${cell.shade}, ${cell.shade})`;
+        ctx.fillRect(cell.x * CELL, cell.y * CELL, CELL - 2, CELL - 2);
+      });
+    }
+
+    // Generative shimmer: every STEP ms a few cells re-roll their gray shade
+    // (occasionally fading near-canvas so a pixel "blinks"), while the icon
+    // silhouette itself stays intact and readable.
+    const STEP = 180;
+    let last = 0;
+    function tick(ts) {
+      if (ts - last >= STEP) {
+        last = ts;
+        const changes = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < changes; i++) {
+          const cell = cells[Math.floor(Math.random() * cells.length)];
+          cell.shade = 30 + Math.floor(Math.random() * (Math.random() < 0.12 ? 200 : 130));
+        }
+        render();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    render();
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      requestAnimationFrame(tick);
+    }
+  });
+
+  // --- MOBILE MENU TOGGLE ---
+  const menuToggle = document.getElementById("menuToggle");
+  const mobilePanel = document.getElementById("navMobilePanel");
+
+  menuToggle.addEventListener("click", () => {
+    const open = mobilePanel.classList.toggle("open");
+    menuToggle.classList.toggle("active", open);
+    menuToggle.setAttribute("aria-expanded", String(open));
+  });
+
+  mobilePanel.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+      mobilePanel.classList.remove("open");
+      menuToggle.classList.remove("active");
+      menuToggle.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  // --- ACTIVE NAV LINK HIGHLIGHTING ---
+  const sections = document.querySelectorAll("section[id]");
+  const navAnchors = document.querySelectorAll(".nav-links a");
+
   window.addEventListener("scroll", () => {
     let current = "";
     sections.forEach(section => {
-      const sectionTop = section.offsetTop;
-      if (window.scrollY >= (sectionTop - 200)) {
-        const id = section.getAttribute("id");
-        if (id) current = id;
+      if (window.scrollY >= section.offsetTop - 200) {
+        current = section.getAttribute("id");
       }
     });
 
-    links.forEach(link => {
-      link.classList.remove("active");
-      const href = link.getAttribute("href");
-      if (current && href.includes(current)) {
-        link.classList.add("active");
-      }
+    navAnchors.forEach(link => {
+      link.classList.toggle("active", current !== "" && link.getAttribute("href") === `#${current}`);
     });
-  });
-
-  // --- SCROLL TO TOP ---
-  const scrollTopBtn = document.getElementById("scrollTopBtn");
-  scrollTopBtn.addEventListener("click", () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-  });
-
-  // --- PAGE LOAD INTRO ANIMATIONS (GSAP) ---
-  if (typeof gsap !== "undefined") {
-    const introTimeline = gsap.timeline();
-
-    // Header slide down
-    introTimeline.from("header", {
-      y: -80,
-      opacity: 0,
-      duration: 1,
-      ease: "power4.out"
-    });
-
-    // Hero section staggering elements
-    introTimeline.from(".hero-tag", {
-      y: 20,
-      opacity: 0,
-      duration: 0.6,
-      ease: "power2.out"
-    }, "-=0.5");
-
-    introTimeline.from(".hero-title", {
-      y: 30,
-      opacity: 0,
-      duration: 0.8,
-      ease: "power3.out"
-    }, "-=0.4");
-
-    introTimeline.from(".hero-description", {
-      y: 20,
-      opacity: 0,
-      duration: 0.6,
-      ease: "power2.out"
-    }, "-=0.4");
-
-    introTimeline.from(".hero-actions", {
-      y: 20,
-      opacity: 0,
-      duration: 0.6,
-      ease: "power2.out"
-    }, "-=0.4");
-
-    // Floating badges entry
-    introTimeline.from(".floating-badge", {
-      scale: 0,
-      opacity: 0,
-      stagger: 0.15,
-      duration: 0.8,
-      ease: "back.out(1.7)"
-    }, "-=0.6");
-
-    // Hero graphic element spin fade
-    introTimeline.from(".hero-art-container", {
-      scale: 0.8,
-      opacity: 0,
-      duration: 1.2,
-      ease: "power2.out"
-    }, "-=1.2");
-  } else {
-    // Fallback: If GSAP is not loaded, ensure hero section is visible immediately
-    console.warn("GSAP is not loaded. Using static layout rendering fallback.");
-  }
-
-
-  // --- SCROLL REVEAL VIA NATIVE INTERSECTIONOBSERVER (Foolproof & High Performance) ---
-  const revealElements = document.querySelectorAll(".timeline-item, .project-card, .skill-category-card, .contact-info, .contact-form");
-  
-  if (window.IntersectionObserver) {
-    const observerOptions = {
-      root: null,
-      threshold: 0.15,
-      rootMargin: "0px 0px -50px 0px"
-    };
-
-    const revealObserver = new IntersectionObserver((entries, observer) => {
-      let delayIndex = 0;
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const element = entry.target;
-          
-          // Apply a stagger effect by checking visibility within the current batch
-          setTimeout(() => {
-            element.classList.add("reveal-visible");
-          }, delayIndex * 150);
-          
-          delayIndex++;
-          observer.unobserve(element);
-        }
-      });
-    }, observerOptions);
-
-    revealElements.forEach(el => {
-      revealObserver.observe(el);
-    });
-  } else {
-    // Fallback: If IntersectionObserver is not supported (old browsers), show cards immediately
-    revealElements.forEach(el => {
-      el.classList.add("reveal-visible");
-    });
-  }
-
+  }, { passive: true });
 
   // --- CONTACT FORM SUBMISSION TOAST ---
   const contactForm = document.getElementById("contactForm");
-  
+
   contactForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    
+
     const nameVal = document.getElementById("name").value;
 
-    // Create custom success notification element
     const toast = document.createElement("div");
-    toast.style.position = "fixed";
-    toast.style.bottom = "20px";
-    toast.style.right = "20px";
-    toast.style.background = "var(--accent-gradient)";
-    toast.style.color = "#000";
-    toast.style.padding = "1rem 2rem";
-    toast.style.borderRadius = "10px";
-    toast.style.fontWeight = "bold";
-    toast.style.boxShadow = "0 10px 30px rgba(0,245,255,0.3)";
-    toast.style.zIndex = "10000";
-    toast.style.transform = "translateY(100px)";
-    toast.style.opacity = "0";
-    toast.textContent = `Thanks ${nameVal}! Message sent successfully.`;
+    Object.assign(toast.style, {
+      position: "fixed",
+      bottom: "20px",
+      right: "20px",
+      background: "#111111",
+      color: "#F5F4F0",
+      padding: "12px 24px",
+      borderRadius: "14px",
+      fontFamily: "'Geist', system-ui, sans-serif",
+      fontSize: "12px",
+      letterSpacing: "0.05em",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+      zIndex: "10000",
+      opacity: "0",
+      transform: "translateY(16px)",
+      transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
+    });
+    toast.textContent = `Thanks ${nameVal} — message sent successfully.`;
 
     document.body.appendChild(toast);
 
-    if (typeof gsap !== "undefined") {
-      // Animate toast using GSAP
-      const toastTimeline = gsap.timeline();
-      toastTimeline.to(toast, {
-        y: 0,
-        opacity: 1,
-        duration: 0.5,
-        ease: "power3.out"
-      });
-      toastTimeline.to(toast, {
-        y: 100,
-        opacity: 0,
-        duration: 0.5,
-        delay: 3,
-        ease: "power3.in",
-        onComplete: () => {
-          toast.remove();
-        }
-      });
-    } else {
-      // Static fallback for Toast display
-      toast.style.transform = "translateY(0)";
+    requestAnimationFrame(() => {
       toast.style.opacity = "1";
-      setTimeout(() => {
-        toast.style.opacity = "0";
-        setTimeout(() => toast.remove(), 500);
-      }, 3000);
-    }
+      toast.style.transform = "translateY(0)";
+    });
 
-    // Reset Form
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(16px)";
+      setTimeout(() => toast.remove(), 700);
+    }, 3500);
+
     contactForm.reset();
   });
 });
