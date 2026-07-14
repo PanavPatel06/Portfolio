@@ -1,11 +1,10 @@
 // Wait for DOM to be fully loaded
 document.addEventListener("DOMContentLoaded", () => {
-
   // --- REVEAL ANIMATIONS (once per page load) ---
   // Word-by-word heading reveal: each word gets its own inline-block span
   // with an 80ms incremental delay, so headings "focus in" word by word.
   // Each element animates only the first time it scrolls into view.
-  document.querySelectorAll(".reveal-words").forEach(heading => {
+  document.querySelectorAll(".reveal-words").forEach((heading) => {
     const words = heading.textContent.trim().split(/\s+/);
     heading.textContent = "";
     words.forEach((word, i) => {
@@ -14,7 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
       span.textContent = word;
       span.style.setProperty("--word-delay", `${i * 80}ms`);
       heading.appendChild(span);
-      if (i < words.length - 1) heading.appendChild(document.createTextNode(" "));
+      if (i < words.length - 1)
+        heading.appendChild(document.createTextNode(" "));
     });
   });
 
@@ -22,18 +22,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const revealElements = document.querySelectorAll(".reveal, .reveal-words");
 
   if (window.IntersectionObserver) {
-    const revealObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("in-view");
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+    const revealObserver = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -50px 0px" },
+    );
 
-    revealElements.forEach(el => revealObserver.observe(el));
+    revealElements.forEach((el) => revealObserver.observe(el));
   } else {
-    revealElements.forEach(el => el.classList.add("in-view"));
+    revealElements.forEach((el) => el.classList.add("in-view"));
   }
 
   // --- ANIMATED PIXEL GLYPH CANVASES ---
@@ -53,7 +56,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function mulberry32(seed) {
     return function () {
-      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      seed |= 0;
+      seed = (seed + 0x6d2b79f5) | 0;
       let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -106,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ],
   };
 
-  glyphs.forEach(canvas => {
+  glyphs.forEach((canvas) => {
     const ctx = canvas.getContext("2d");
     const seed = canvas.dataset.seed || "glyph";
     const rand = mulberry32(hashString(seed));
@@ -128,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function render() {
       ctx.clearRect(0, 0, 80, 80);
-      cells.forEach(cell => {
+      cells.forEach((cell) => {
         ctx.fillStyle = `rgb(${cell.shade}, ${cell.shade}, ${cell.shade})`;
         ctx.fillRect(cell.x * CELL, cell.y * CELL, CELL - 2, CELL - 2);
       });
@@ -145,7 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const changes = 2 + Math.floor(Math.random() * 2);
         for (let i = 0; i < changes; i++) {
           const cell = cells[Math.floor(Math.random() * cells.length)];
-          cell.shade = 30 + Math.floor(Math.random() * (Math.random() < 0.12 ? 200 : 130));
+          cell.shade =
+            30 + Math.floor(Math.random() * (Math.random() < 0.12 ? 200 : 130));
         }
         render();
       }
@@ -168,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     menuToggle.setAttribute("aria-expanded", String(open));
   });
 
-  mobilePanel.querySelectorAll("a").forEach(link => {
+  mobilePanel.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
       mobilePanel.classList.remove("open");
       menuToggle.classList.remove("active");
@@ -180,23 +185,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const sections = document.querySelectorAll("section[id]");
   const navAnchors = document.querySelectorAll(".nav-links a");
 
-  window.addEventListener("scroll", () => {
-    let current = "";
-    sections.forEach(section => {
-      if (window.scrollY >= section.offsetTop - 200) {
-        current = section.getAttribute("id");
-      }
-    });
+  window.addEventListener(
+    "scroll",
+    () => {
+      let current = "";
+      sections.forEach((section) => {
+        if (window.scrollY >= section.offsetTop - 200) {
+          current = section.getAttribute("id");
+        }
+      });
 
-    navAnchors.forEach(link => {
-      link.classList.toggle("active", current !== "" && link.getAttribute("href") === `#${current}`);
-    });
-  }, { passive: true });
+      navAnchors.forEach((link) => {
+        link.classList.toggle(
+          "active",
+          current !== "" && link.getAttribute("href") === `#${current}`,
+        );
+      });
+    },
+    { passive: true },
+  );
 
-  // --- CONTACT FORM: DELIVER MESSAGE VIA FORMSUBMIT.CO ---
-  // Static-site email relay: POSTs the form as JSON to FormSubmit, which
-  // forwards it to the inbox below. The first-ever submission triggers a
-  // one-time activation email that must be confirmed before delivery starts.
+  // --- CONTACT FORM: DELIVER MESSAGE VIA WEB3FORMS ---
+  // Static-site email relay: POSTs the form as JSON to Web3Forms, which
+  // forwards it to the inbox tied to the access key below.
+  // Get the key (free, no account): https://web3forms.com → enter your
+  // email → the key arrives by email → paste it here.
+  const WEB3FORMS_ACCESS_KEY = "6ccb0f54-d9fb-49cc-a66d-a5923dcdb044";
   const CONTACT_EMAIL = "panavbpatel@gmail.com";
   const contactForm = document.getElementById("contactForm");
   const submitBtn = contactForm.querySelector("button[type='submit']");
@@ -220,7 +234,8 @@ document.addEventListener("DOMContentLoaded", () => {
       zIndex: "10000",
       opacity: "0",
       transform: "translateY(16px)",
-      transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
+      transition:
+        "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)",
     });
     toast.textContent = message;
     document.body.appendChild(toast);
@@ -248,28 +263,32 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.textContent = "SENDING…";
 
     try {
-      const res = await fetch(`https://formsubmit.co/ajax/${CONTACT_EMAIL}`, {
+      const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({
+          access_key: WEB3FORMS_ACCESS_KEY,
           name: nameVal,
           email: emailVal,
           message: messageVal,
-          _subject: `Portfolio contact from ${nameVal}`,
-          _template: "table",
-          _captcha: "false"
-        })
+          subject: `Portfolio contact from ${nameVal}`,
+          from_name: "Portfolio Contact Form",
+        }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!res.ok || !data.success)
+        throw new Error(data.message || `HTTP ${res.status}`);
 
       showToast(`Thanks ${nameVal} — your message has been sent.`);
       contactForm.reset();
     } catch (err) {
-      showToast(`Something went wrong — please email me directly at ${CONTACT_EMAIL}.`);
+      showToast(
+        `Something went wrong — please email me directly at ${CONTACT_EMAIL}.`,
+      );
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = "SEND MESSAGE";
