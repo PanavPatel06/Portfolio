@@ -193,19 +193,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }, { passive: true });
 
-  // --- CONTACT FORM SUBMISSION TOAST ---
+  // --- CONTACT FORM: DELIVER MESSAGE VIA FORMSUBMIT.CO ---
+  // Static-site email relay: POSTs the form as JSON to FormSubmit, which
+  // forwards it to the inbox below. The first-ever submission triggers a
+  // one-time activation email that must be confirmed before delivery starts.
+  const CONTACT_EMAIL = "panavbpatel@gmail.com";
   const contactForm = document.getElementById("contactForm");
+  const submitBtn = contactForm.querySelector("button[type='submit']");
 
-  contactForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const nameVal = document.getElementById("name").value;
-
+  function showToast(message) {
     const toast = document.createElement("div");
     Object.assign(toast.style, {
       position: "fixed",
       bottom: "20px",
       right: "20px",
+      maxWidth: "320px",
       background: "#111111",
       color: "#F5F4F0",
       padding: "12px 24px",
@@ -213,14 +215,14 @@ document.addEventListener("DOMContentLoaded", () => {
       fontFamily: "'Geist', system-ui, sans-serif",
       fontSize: "12px",
       letterSpacing: "0.05em",
+      lineHeight: "1.6",
       boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
       zIndex: "10000",
       opacity: "0",
       transform: "translateY(16px)",
       transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
     });
-    toast.textContent = `Thanks ${nameVal} — message sent successfully.`;
-
+    toast.textContent = message;
     document.body.appendChild(toast);
 
     requestAnimationFrame(() => {
@@ -232,8 +234,45 @@ document.addEventListener("DOMContentLoaded", () => {
       toast.style.opacity = "0";
       toast.style.transform = "translateY(16px)";
       setTimeout(() => toast.remove(), 700);
-    }, 3500);
+    }, 4500);
+  }
 
-    contactForm.reset();
+  contactForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nameVal = document.getElementById("name").value;
+    const emailVal = document.getElementById("email").value;
+    const messageVal = document.getElementById("message").value;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "SENDING…";
+
+    try {
+      const res = await fetch(`https://formsubmit.co/ajax/${CONTACT_EMAIL}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          name: nameVal,
+          email: emailVal,
+          message: messageVal,
+          _subject: `Portfolio contact from ${nameVal}`,
+          _template: "table",
+          _captcha: "false"
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      showToast(`Thanks ${nameVal} — your message has been sent.`);
+      contactForm.reset();
+    } catch (err) {
+      showToast(`Something went wrong — please email me directly at ${CONTACT_EMAIL}.`);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "SEND MESSAGE";
+    }
   });
 });
