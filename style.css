@@ -54,6 +54,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Full-bleed rules use 100vw, which includes the scrollbar on some
+     browsers — clip the few px of resulting horizontal overflow */
+  overflow-x: hidden;
 }
 
 body {
@@ -159,6 +162,9 @@ h1, h2, h3 {
   line-height: 1.0;
   letter-spacing: -0.025em;
   max-width: 768px;
+  /* Optical alignment: compensate for the glyphs' left side bearing so the
+     ink (not the em box) lines up with the pill and paragraph below */
+  margin-left: -0.05em;
 }
 
 .section-title {
@@ -166,6 +172,7 @@ h1, h2, h3 {
   font-size: 36px;
   line-height: 1.05;
   letter-spacing: -0.025em;
+  margin-left: -0.03em; /* optical alignment, see .hero-title */
 }
 
 @media (min-width: 640px) {
@@ -1069,14 +1076,75 @@ h1, h2, h3 {
   transform: translateY(0);
 }
 
-/* Repeat visits in the same session skip the reveal animations entirely
-   (the .no-reveal class is set by app.js from sessionStorage) */
-.no-reveal .reveal,
-.no-reveal .reveal-words .word {
-  opacity: 1;
-  filter: none;
-  transform: none;
-  transition: none;
+/* ============================================================
+   Mobile refinements
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Tighter vertical rhythm on small screens */
+  .section {
+    padding-top: 80px;
+    padding-bottom: 80px;
+  }
+
+  .hero {
+    padding-top: 132px;
+    padding-bottom: 80px;
+  }
+
+  .eyebrow-block .pixel-glyph {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* 16px inputs stop iOS Safari from zooming the page on focus */
+  .form-group input,
+  .form-group textarea {
+    font-size: 16px;
+  }
+
+  .contact-form,
+  .contact-info,
+  .experience-card {
+    padding: 24px;
+  }
+
+  .footer-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Compact hero stats: 3 equal columns so all three stay on one row */
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .stat-block + .stat-block {
+    padding-left: 16px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .project-footer {
+    flex-wrap: wrap;
+  }
+
+  .experience-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* Account for mobile browser chrome when sizing the hero */
+@supports (min-height: 100svh) {
+  .hero { min-height: 100svh; }
 }
 
 /* Respect users who prefer reduced motion */
