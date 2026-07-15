@@ -163,6 +163,101 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // --- ASCII-ART PORTRAIT ---
+  // Renders the photo named in data-src as typewriter-style ASCII art: the
+  // image is sampled into a grid of cells, each cell's brightness is mapped
+  // to a character from a density ramp (dense glyphs for shadow, blank for
+  // highlight), then drawn in the site's monospace font. Swapping the
+  // source file automatically regenerates the portrait.
+  const ASCII_RAMP = " .:-=+*#%@";
+  const ASCII_FONT_SIZE = 0.5; // canvas px per row
+  const ASCII_CHAR_ASPECT = 0.6; // Geist Mono glyph width / height
+
+  document.querySelectorAll(".ascii-portrait").forEach(canvas => {
+    const ctx = canvas.getContext("2d");
+    const targetRatio = 3 / 4; // matches the frame's portrait crop
+
+    const cellH = ASCII_FONT_SIZE;
+    const cellW = ASCII_FONT_SIZE * ASCII_CHAR_ASPECT;
+
+    function draw(img) {
+      let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+      if (sw / sh > targetRatio) {
+        const cropW = sh * targetRatio;
+        sx = (sw - cropW) / 2;
+        sw = cropW;
+      } else {
+        const cropH = sw / targetRatio;
+        sy = (sh - cropH) * 0.25; // bias toward the top so faces stay framed
+        sh = cropH;
+      }
+
+      const gridCols = Math.round(660 / cellW);
+      const gridRows = Math.round(880 / cellH);
+
+      // Downsample the cropped photo straight to one pixel per grid cell —
+      // the browser's own image smoothing does the brightness averaging
+      const sample = document.createElement("canvas");
+      sample.width = gridCols;
+      sample.height = gridRows;
+      const sctx = sample.getContext("2d");
+      sctx.imageSmoothingEnabled = true;
+      sctx.drawImage(img, sx, sy, sw, sh, 0, 0, gridCols, gridRows);
+      const px = sctx.getImageData(0, 0, gridCols, gridRows).data;
+
+      canvas.width = gridCols * cellW;
+      canvas.height = gridRows * cellH;
+      ctx.fillStyle = "rgba(17, 17, 17, 0.88)";
+      ctx.font = `${ASCII_FONT_SIZE}px "Geist Mono", ui-monospace, monospace`;
+      ctx.textBaseline = "top";
+
+      // Punch up contrast (and lift brightness slightly, since the source
+      // is a dim night photo) so highlights clear to blank paper and
+      // shadows pack in dense ink — otherwise a busy midtone background
+      // drowns the subject in a flat wash of mid-ramp characters
+      const CONTRAST = 1.55;
+      const BRIGHTNESS = 0.05;
+
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          const i = (row * gridCols + col) * 4;
+          let luminance = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+          luminance = (luminance - 0.5) * CONTRAST + 0.5 + BRIGHTNESS;
+          luminance = Math.max(0, Math.min(1, luminance));
+          const level = Math.floor((1 - luminance) * (ASCII_RAMP.length - 1));
+          const char = ASCII_RAMP[level];
+          if (char === " ") continue;
+          ctx.fillText(char, col * cellW, row * cellH);
+        }
+      }
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => draw(img));
+      } else {
+        draw(img);
+      }
+    };
+    img.src = canvas.dataset.src;
+  });
+
+  // --- PORTRAIT CLICK-TO-REVEAL ---
+  // Clicking the ASCII portrait crossfades to the real photo (grayscale,
+  // via CSS filter, so it stays on-theme); clicking again returns to the
+  // ASCII rendering. The .is-photo class drives the transition in CSS.
+  const portraitToggle = document.getElementById("portraitToggle");
+  const portraitHint = document.getElementById("portraitHint");
+
+  if (portraitToggle && portraitHint) {
+    portraitToggle.addEventListener("click", () => {
+      const isPhoto = portraitToggle.classList.toggle("is-photo");
+      portraitToggle.setAttribute("aria-pressed", String(isPhoto));
+      portraitHint.textContent = isPhoto ? "Click to view ASCII art" : "Click to view photo";
+    });
+  }
+
   // --- MOBILE MENU TOGGLE ---
   const menuToggle = document.getElementById("menuToggle");
   const mobilePanel = document.getElementById("navMobilePanel");

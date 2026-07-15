@@ -541,6 +541,120 @@ h1, h2, h3 {
   background: rgba(0, 0, 0, 0.05);
 }
 
+/* Hero layout: copy left, pixel portrait right (stacked below on smaller screens) */
+.hero-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .hero-layout {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 64px;
+  }
+}
+
+.hero-portrait {
+  justify-self: center;
+}
+
+@media (min-width: 1024px) {
+  .hero-portrait { justify-self: end; }
+}
+
+/* Button reset: the whole portrait + hint is one clickable control */
+.portrait-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (min-width: 1024px) {
+  .portrait-toggle { align-items: flex-end; }
+}
+
+/* Same recipe as cards: white backing, hairline border, 16px radius */
+.portrait-frame {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  transition: border-color 0.7s ease, background-color 0.7s ease;
+}
+
+.portrait-toggle:hover .portrait-frame {
+  border-color: var(--card-border-hover);
+}
+
+/* Stack holds the ASCII canvas and the real photo on top of each other,
+   sized by aspect-ratio so both fill it identically for a clean crossfade */
+.portrait-stack {
+  position: relative;
+  width: min(280px, 70vw);
+  aspect-ratio: 3 / 4;
+}
+
+@media (min-width: 1024px) {
+  .portrait-stack { width: 330px; }
+}
+
+.ascii-portrait,
+.portrait-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  transition: opacity 0.6s var(--ease-out-expo), filter 0.6s var(--ease-out-expo);
+}
+
+.ascii-portrait {
+  background: var(--card);
+  opacity: 1;
+  filter: blur(0);
+}
+
+.portrait-photo {
+  object-fit: cover;
+  object-position: 50% 22%; /* matches the ASCII crop's top-biased framing */
+  filter: grayscale(1) contrast(1.05) blur(6px);
+  opacity: 0;
+}
+
+/* Revealed state, toggled by app.js on click */
+.portrait-toggle.is-photo .ascii-portrait {
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.portrait-toggle.is-photo .portrait-photo {
+  opacity: 1;
+  filter: grayscale(1) contrast(1.05) blur(0);
+}
+
+.portrait-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label-foreground);
+  transition: color 0.2s ease;
+}
+
+.portrait-toggle:hover .portrait-hint {
+  color: var(--nav-link);
+}
+
 .hero-title {
   margin-top: 24px;
 }
