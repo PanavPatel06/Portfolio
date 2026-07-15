@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // highlight), then drawn in the site's monospace font. Swapping the
   // source file automatically regenerates the portrait.
   const ASCII_RAMP = " .:-=+*#%@";
-  const ASCII_FONT_SIZE = 0.5; // canvas px per row
+  const ASCII_FONT_SIZE = 1; // canvas px per row
   const ASCII_CHAR_ASPECT = 0.6; // Geist Mono glyph width / height
 
   document.querySelectorAll(".ascii-portrait").forEach(canvas => {
